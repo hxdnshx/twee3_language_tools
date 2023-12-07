@@ -10,6 +10,9 @@
 
     <extensions defaultExtensionNs="com.intellij">
         <toolWindow factoryClass="com.github.hxdnshx.twee3languagetools.toolWindow.MyToolWindowFactory" id="MyToolWindow"/>
+        <fileTypeFactory implementation="org.intellij.sdk.language.TweeFileTypeFactory"/>
+        <lang.parserDefinition language="Twee3"
+                               implementationClass="org.intellij.sdk.language.TweeParserDefinition"/>
     </extensions>
 
     <applicationListeners>
