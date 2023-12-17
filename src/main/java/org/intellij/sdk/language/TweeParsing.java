@@ -51,6 +51,10 @@ public class TweeParsing {
                 error = flushError(error);
                 parseTag();
             }
+            else if (tt == TweeTokenType.TWEE_START_MACRO_START) {
+                error = flushError(error);
+                parseMacro();
+            }
             else if (tt == XmlTokenType.XML_COMMENT_START) {
                 error = flushError(error);
                 parseComment();
@@ -160,6 +164,89 @@ public class TweeParsing {
         }
 
         doctype.done(XmlElementType.XML_DOCTYPE);
+    }
+
+    public void parseMacro() {
+        assert token() == TweeTokenType.TWEE_START_MACRO_START : "Macro start expected";
+        String originalTagName;
+        PsiBuilder.Marker xmlText = null;
+        while (shouldContinueMainLoop() && shouldContinueParsingTag()) {
+            final IElementType tt = token();
+            if (tt == TweeTokenType.TWEE_START_MACRO_START) {
+                xmlText = terminateText(xmlText);
+                final PsiBuilder.Marker tagStart = mark();
+
+                // Start tag header
+                advance();
+                originalTagName = parseOpenTagName();
+
+                HtmlTagInfo info = createHtmlTagInfo(originalTagName, tagStart);
+                while (openingTagAutoClosesTagInStack(info)) {
+                    completeTopStackItemBefore(tagStart);
+                }
+                pushItemToStack(info);
+
+                parseTagHeader(info.getNormalizedName());
+
+
+                if (token() == TweeTokenType.TWEE_MACRO_END) {
+                    advance();
+                }
+                else {
+                    error(XmlPsiBundle.message("xml.parsing.tag.start.is.not.closed"));
+                    doneTag();
+                    continue;
+                }
+
+                if (isSingleTag(info)) {
+                    final PsiBuilder.Marker footer = mark();
+                    while (token() == XmlTokenType.XML_REAL_WHITE_SPACE) {
+                        advance();
+                    }
+                    footer.rollbackTo();
+                    doneTag();
+                }
+            }
+            else if (tt == XmlTokenType.XML_PI_START) {
+                xmlText = terminateText(xmlText);
+                parseProcessingInstruction();
+            }
+            else if (tt == XmlTokenType.XML_ENTITY_REF_TOKEN || tt == XmlTokenType.XML_CHAR_ENTITY_REF) {
+                xmlText = startText(xmlText);
+                parseReference();
+            }
+            else if (tt == XmlTokenType.XML_CDATA_START) {
+                xmlText = startText(xmlText);
+                parseCData();
+            }
+            else if (tt == XmlTokenType.XML_COMMENT_START) {
+                xmlText = startText(xmlText);
+                parseComment();
+            }
+            else if (tt == XmlTokenType.XML_BAD_CHARACTER) {
+                xmlText = startText(xmlText);
+                final PsiBuilder.Marker error = mark();
+                advance();
+                error.error(XmlPsiBundle.message("xml.parsing.unescaped.ampersand.or.nonterminated.character.entity.reference"));
+            }
+            else if (tt instanceof ICustomParsingType || tt instanceof ILazyParseableElementType) {
+                xmlText = terminateText(xmlText);
+                maybeRemapCurrentToken(tt);
+                advance();
+            }
+            else if ((token() == XmlTokenType.XML_REAL_WHITE_SPACE || token() == XmlTokenType.XML_DATA_CHARACTERS) && stackSize() == 0) {
+                xmlText = terminateText(xmlText);
+                advance();
+            }
+            else if (hasCustomTagContent()) {
+                xmlText = parseCustomTagContent(xmlText);
+            }
+            else {
+                xmlText = startText(xmlText);
+                advance();
+            }
+        }
+        terminateText(xmlText);
     }
 
     public void parseTag() {

@@ -13,6 +13,8 @@
         <fileTypeFactory implementation="org.intellij.sdk.language.TweeFileTypeFactory"/>
         <lang.parserDefinition language="Twee3"
                                implementationClass="org.intellij.sdk.language.TweeParserDefinition"/>
+        <lang.syntaxHighlighterFactory language="Twee3"
+                                       implementationClass="org.intellij.sdk.language.TweeSyntaxHighLighterFactory"/>
     </extensions>
 
     <applicationListeners>
